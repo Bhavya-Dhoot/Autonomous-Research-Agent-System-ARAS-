@@ -26,7 +26,7 @@ aras/.env.*
 *.p12
 *.pfx
 
-# Runtime data/artifacts
+# Runtime data/artifacts (keep structure, ignore contents)
 logs/*
 !logs/.gitkeep
 chroma_db/*
@@ -35,41 +35,33 @@ memory_snapshot/*
 !memory_snapshot/.gitkeep
 saved_data/*
 !saved_data/.gitkeep
-outputs/*
-!outputs/.gitkeep
-output/*
-!output/.gitkeep
-artifacts/*
-!artifacts/.gitkeep
-cache/*
-!cache/.gitkeep
-caches/*
-!caches/.gitkeep
-*.cache
-paper/**/*.pdf
-experiments/**/*.pdf
+data/*
+!data/.gitkeep
 experiments/*
 !experiments/.gitkeep
-reports/*
-!reports/.gitkeep
-generated/*
-!generated/.gitkeep
-generated_papers/*
-!generated_papers/.gitkeep
-generated_reports/*
-!generated_reports/.gitkeep
 paper/*
-!paper/.gitkeep
 !paper/diffs/
 !paper/diffs/.gitkeep
 !paper/figures/
 !paper/figures/.gitkeep
-paper/figures/*
-!paper/figures/.gitkeep
 paper/diffs/*
 !paper/diffs/.gitkeep
-data/*
-!data/.gitkeep
+paper/figures/*
+!paper/figures/.gitkeep
+
+# Optional local output directories (fully ignored)
+outputs/
+output/
+artifacts/
+reports/
+generated/
+generated_papers/
+generated_reports/
+cache/
+caches/
+*.cache
+paper/**/*.pdf
+experiments/**/*.pdf
 *.sqlite3
 *.sqlite
 *.db
@@ -89,12 +81,9 @@ models/*.gguf
 *.ckpt
 
 # API/client credentials and cloud tokens
-.secrets/*
-!.secrets/.gitkeep
-secrets/*
-!secrets/.gitkeep
-credentials/*
-!credentials/.gitkeep
+.secrets/
+secrets/
+credentials/
 *apikey*
 *api_key*
 *.token
