@@ -66,6 +66,25 @@ flowchart LR
 - Keep paths/config centralized in `aras/config.py`.
 - Validate changes with `pytest -v` before opening a PR.
 
+## Extension example (add one agent)
+
+1. Create `aras/agents/my_agent.py` with one async method, for example `run(topic: str) -> dict`.
+2. Wire it into `aras/orchestrator.py` by instantiating it in `__init__` and calling it in `_run_cycle`.
+3. Add any env/config knobs in `aras/config.py` (with safe defaults).
+4. Add tests in `tests/unit/` for agent logic and `tests/integration/` for orchestrator flow.
+5. Run `pytest -v`, then open a PR describing input, output, and failure behavior.
+
+Minimal skeleton:
+
+```python
+# aras/agents/my_agent.py
+from __future__ import annotations
+
+class MyAgent:
+    async def run(self, *, topic: str) -> dict:
+        return {"status": "ok", "topic": topic}
+```
+
 ## Quick start
 
 ### Prerequisites
