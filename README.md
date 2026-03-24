@@ -2,10 +2,10 @@
 
 ![ARAS Logo](docs/assets/aras-logo.svg)
 
-![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-22C55E)
-![Status](https://img.shields.io/badge/Status-Research%20Automation-0EA5E9)
-![Security](https://img.shields.io/badge/Secrets-Strict%20No--Commit-E11D48)
+![Python](https://img.shields.io/badge/Python-3.12%2B-3B82F6?logo=python&logoColor=white&style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-22D3EE?style=flat-square)
+![Status](https://img.shields.io/badge/Status-Research%20Automation-0F172A?style=flat-square)
+![Security](https://img.shields.io/badge/Secrets-Strict%20No--Commit-FB7185?style=flat-square)
 
 ARAS (Autonomous Research Agent System) is an end-to-end research automation framework that turns a topic into experiments, analysis, figures, and a publication-style paper with a live web UI.
 
