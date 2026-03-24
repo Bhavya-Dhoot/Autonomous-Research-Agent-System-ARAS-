@@ -1,5 +1,7 @@
 # ARAS: Idea-to-Paper Autopilot
 
+![ARAS Logo](docs/assets/aras-logo.svg)
+
 ![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-22C55E)
 ![Status](https://img.shields.io/badge/Status-Research%20Automation-0EA5E9)
