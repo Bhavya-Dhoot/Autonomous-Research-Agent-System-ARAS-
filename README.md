@@ -1,10 +1,17 @@
 # ARAS: Idea-to-Paper Autopilot
 
+![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-22C55E)
+![Status](https://img.shields.io/badge/Status-Research%20Automation-0EA5E9)
+![Security](https://img.shields.io/badge/Secrets-Strict%20No--Commit-E11D48)
+
 ARAS (Autonomous Research Agent System) is an end-to-end research automation framework that turns a topic into experiments, analysis, figures, and a publication-style paper with a live web UI.
 
 It is built for practical, reproducible AI research workflows: evidence-gated novelty checks, runnable experiment generation, paper drafting, review loops, persistent memory, and optional publishing.
 
 ## How it works
+
+`Idea -> Evidence -> Experiments -> Figures -> Paper -> Publish`
 
 ```mermaid
 flowchart LR
@@ -24,6 +31,14 @@ flowchart TD
     O --> W[Writer + Reviewer Agents]
     O --> M[Memory + Prompt Versions]
     O --> U[FastAPI + WebSocket UI]
+
+    classDef core fill:#dbeafe,stroke:#1d4ed8,color:#0f172a;
+    classDef ui fill:#dcfce7,stroke:#15803d,color:#0f172a;
+    classDef mem fill:#fef3c7,stroke:#b45309,color:#0f172a;
+
+    class O,R,C,F,W core;
+    class U ui;
+    class M mem;
 ```
 
 ## Why ARAS
