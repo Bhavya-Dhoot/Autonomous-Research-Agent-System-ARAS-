@@ -4,6 +4,28 @@ ARAS (Autonomous Research Agent System) is an end-to-end research automation fra
 
 It is built for practical, reproducible AI research workflows: evidence-gated novelty checks, runnable experiment generation, paper drafting, review loops, persistent memory, and optional publishing.
 
+## How it works
+
+```mermaid
+flowchart LR
+    A[Topic] --> B[Plan + Novelty Gate]
+    B --> C[Scrape + Validate Sources]
+    C --> D[Generate + Run Experiments]
+    D --> E[Analyze + Build Figures]
+    E --> F[Draft + Review Paper]
+    F --> G[Publish Optional: GitHub/HF]
+```
+
+```mermaid
+flowchart TD
+    O[Orchestrator] --> R[Research Agent]
+    O --> C[Coder Agent]
+    O --> F[Figures Agent]
+    O --> W[Writer + Reviewer Agents]
+    O --> M[Memory + Prompt Versions]
+    O --> U[FastAPI + WebSocket UI]
+```
+
 ## Why ARAS
 
 - Multi-agent orchestration for the full research lifecycle (plan -> scrape -> code -> run -> analyze -> write -> review -> publish)
@@ -25,9 +47,24 @@ It is built for practical, reproducible AI research workflows: evidence-gated no
 
 - `aras/` main source package (agents, orchestrator, UI, config, models, memory)
 - `tests/` unit, API, network, and integration tests
-- `paper/` generated paper artifacts
-- `experiments/` generated experiment code and outputs
+- `paper/` paper workspace (figures/diffs folders tracked; generated files ignored)
+- `experiments/` experiments workspace (folder tracked; generated content ignored)
 - `logs/` runtime logs and quality ledgers (ignored by git)
+
+## Build on ARAS (quick path)
+
+```mermaid
+flowchart LR
+    A[Fork + Clone] --> B[Copy aras/.env.example to .env]
+    B --> C[Run main.py with topic]
+    C --> D[Inspect UI + outputs]
+    D --> E[Add/modify one agent]
+    E --> F[Run tests + open PR]
+```
+
+- Add a new capability by extending an agent in `aras/agents/`.
+- Keep paths/config centralized in `aras/config.py`.
+- Validate changes with `pytest -v` before opening a PR.
 
 ## Quick start
 
