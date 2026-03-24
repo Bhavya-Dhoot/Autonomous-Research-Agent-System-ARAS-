@@ -1,25 +1,24 @@
 <svg width="960" height="240" viewBox="0 0 960 240" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ARAS logo">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="960" y2="240" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#0F172A"/>
+      <stop stop-color="#0B1220"/>
       <stop offset="1" stop-color="#111827"/>
     </linearGradient>
-    <linearGradient id="orb" x1="64" y1="44" x2="196" y2="196" gradientUnits="userSpaceOnUse">
+    <linearGradient id="accent" x1="64" y1="40" x2="190" y2="190" gradientUnits="userSpaceOnUse">
       <stop stop-color="#22D3EE"/>
       <stop offset="1" stop-color="#3B82F6"/>
     </linearGradient>
-    <linearGradient id="spark" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#FDE68A"/>
-      <stop offset="1" stop-color="#FB7185"/>
-    </linearGradient>
   </defs>
 
-  <rect x="0" y="0" width="960" height="240" rx="18" fill="url(#bg)"/>
+  <rect x="0" y="0" width="960" height="240" rx="20" fill="url(#bg)"/>
 
-  <circle cx="126" cy="120" r="72" fill="url(#orb)"/>
-  <circle cx="126" cy="120" r="48" fill="#0F172A" opacity="0.72"/>
-  <path d="M126 72L137 108L174 108L143 130L154 166L126 144L98 166L109 130L78 108L115 108L126 72Z" fill="url(#spark)"/>
+  <circle cx="126" cy="120" r="54" stroke="url(#accent)" stroke-width="12"/>
+  <circle cx="126" cy="66" r="8" fill="#22D3EE"/>
+  <circle cx="172" cy="148" r="8" fill="#3B82F6"/>
+  <circle cx="80" cy="148" r="8" fill="#7DD3FC"/>
+  <path d="M88 146L126 120L164 146" stroke="#60A5FA" stroke-width="6" stroke-linecap="round"/>
+  <path d="M126 120L126 74" stroke="#22D3EE" stroke-width="6" stroke-linecap="round"/>
 
-  <text x="232" y="112" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="56" font-weight="700">ARAS</text>
-  <text x="232" y="156" fill="#93C5FD" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="500">Autonomous Research Agent System</text>
+  <text x="232" y="116" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="56" font-weight="700" letter-spacing="0.5">ARAS</text>
+  <text x="232" y="156" fill="#93C5FD" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="500">Autonomous Research Agent System</text>
 </svg>
