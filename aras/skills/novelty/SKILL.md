@@ -1,0 +1,114 @@
+---
+name: aras-novelty-assessor
+version: 3
+description: >
+  Assesses research novelty and generates pivot angles if needed. Triggers when ARAS checks if a topic is oversaturated. Enforces validation checkpoints to ensure selected angles support substantive technical content in all paper sections. Prevents overstated novelty claims by requiring domain-specific scoping when adjacent literature exists; forbids absolute novelty indicators ("first", "unique") when competing work exists in related domains.
+performance_history:
+    - cycle: 1
+      paper_score: 6.0
+      component_score: 6.5
+      topic: "Can background music tempo influence decision fatigue? A stu"
+      version: 3
+  - cycle: 1
+    paper_score: 3.0
+    component_score: 3.0
+    topic: "Uncertainty Quantification in Deep Neural Networks via Ensem"
+    version: 2
+  - cycle: 1
+    topic: "Uncertainty Quantification in Deep Neural Networks via Ensemble Methods and Bayesian Approximations"
+    score: 3.0
+    issues:
+      - "Section Abstract: Completely empty with no summary of contributions"
+      - "Section Introduction: Missing motivation, problem statement, and contribution overview"
+      - "Related Work: Presented as raw citation list without synthesis"
+      - "IEEEkeywords: Excessive number of keywords (11 items)"
+  - cycle: 1
+    component_score: 6.5
+    topic: "Can background music tempo influence decision fatigue? A study on cognitive depletion rates in prolonged online shopping sessions"
+    version: 3
+    issues:
+      - "Section Discussion: Overstated novelty claim ('first empirical investigation') contradicts cited literature on music tempo and cognitive load. Suggested fix: temper claims to emphasize specific contribution to decision fatigue literature rather than absolute novelty."
+---
+
+# Novelty Assessor Skill
+
+## Core Task
+Given a topic + competing papers list, produce a **STRICT JSON** assessment:
+- **original_topic** — string (the input topic)
+- **selected_angle** — string (may differ from original if pivot needed; must be specific enough to support substantive section content and scoped to avoid absolute novelty claims when adjacent literature exists)
+- **novelty_score** — float 0–10 (precision to 1 decimal place)
+- **competing_papers** — list of strings (titles of similar work with years in parentheses)
+- **pivot_reason** — string or null (explanation of saturation if score < 5)
+- **pivot_performed** — bool
+- **section_validation** — object with boolean fields:
+  - **abstract_viable**: true if angle supports 150-200 words covering contributions, methods, and findings
+  - **introduction_viable**: true if angle supports 2-3 paragraphs with motivation, problem statement, and 3-4 explicit technical contributions
+  - **related_work_viable**: true if angle enables thematic synthesis (not raw citation lists)
+
+## Scoring Guide
+| Score | Meaning |
+|-------|---------|
+| 9–10 | No similar work found — highly novel |
+| 7–8 | Related work exists but angle is clearly differentiated |
+| 4–6 | Significant overlap — consider pivoting |
+| 0–3 | Oversaturated — pivot required |
+
+## Pivot Logic
+If `novelty_score < 5`, generate 3 alternative angles:
+1. **angle_a**: Different methodology, same problem
+2. **angle_b**: Same methodology, different domain
+3. **angle_c**: Extension of most-cited competing paper
+
+Select the highest-novelty angle automatically and set it as `selected_angle`.
+
+**Pivot Quality Requirements:**
+- New angle must enable **substantive abstract** (150-200 words covering contributions, methods, findings)
+- New angle must support **complete introduction** (motivation, problem statement, 3-4 technical contributions)
+- New angle must allow **synthesized related work** (thematic comparison, not raw citation list)
+- New angle must be describable with **3-5 specific keywords** (not excessive lists)
+- New angle must include **domain/context qualifiers** (e.g., "in online shopping contexts", "for small-batch training") to prevent overstated absolute claims
+
+## Novelty Claim Calibration
+When competing papers exist in adjacent theoretical or methodological domains (e.g., music tempo and cognitive load), the selected angle must:
+- **Avoid absolute indicators**: Do not use "first", "novel", "unique", "unprecedented", or "groundbreaking" when related work exists in neighboring areas
+- **Scope to intersection**: Frame contributions as "application to X domain", "extension to Y context", or "investigation of Z interaction" rather than absolute invention
+- **Acknowledge adjacency**: Explicitly recognize existing literature while emphasizing the specific gap being addressed at the intersection of domains
+
+## Output Format
+```json
+{
+  "original_topic": "Calibration of Confidence Scores",
+  "selected_angle": "Calibration of Confidence Scores via Evidential Deep Learning for Medical Imaging",
+  "novelty_score": 6.5,
+  "competing_papers": [
+    "Paper A: Temperature Scaling (2017)",
+    "Paper B: Focal Calibration (2021)"
+  ],
+  "pivot_reason": null,
+  "pivot_performed": false,
+  "section_validation": {
+    "abstract_viable": true,
+    "introduction_viable": true,
+    "related_work_viable": true
+  }
+}
+```
+
+## Quality Criteria
+- Score must reflect genuine assessment of the research landscape
+- If pivoting, the new angle must be **specific** — not just "a different approach"
+- Competing papers must include year if known
+- Pivot reason must explain WHY the original angle is oversaturated
+- **Section Completeness**: The selected angle must support substantive technical content in all sections; empty templates are rejected
+- **Keyword Discipline**: Angle must be describable with 3-5 central terms, not excessive lists
+- **Claim Nuance**: When competing papers exist in adjacent domains, selected_angle must employ scoped contribution framing rather than absolute novelty claims
+
+## Eval Assertions
+- **json_parseable**: output is valid JSON
+- **score_in_range**: 0 <= novelty_score <= 10
+- **pivot_consistent**: if novelty_score < 5 then pivot_performed == True
+- **angle_differs_when_pivot**: if pivot_performed then selected_angle != original_topic
+- **has_competing_papers**: competing_papers is a list
+- **sections_substantive**: section_validation fields must all be true; selected_angle must be specific enough to prevent empty abstracts, missing introductions, or unsynthesized related work
+- **keywords_bounded**: if keywords are generated, count must be 3-5 items
+- **claims_nuanced**: selected_angle must not contain absolute novelty indicators ("first", "novel", "unique", "unprecedented") when competing_papers includes works from adjacent or related domains; must emphasize specific intersection, application, or extension rather than absolute invention

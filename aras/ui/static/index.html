@@ -1,0 +1,1072 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>ARAS Live</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+    <style>
+      :root{
+        --bg:#0b1020; --panel:#121a33; --muted:#9aa4c2; --text:#e8ecff;
+        --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; --work:#60a5fa; --idle:#64748b;
+        --border:rgba(255,255,255,.08);
+        --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      }
+      html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family:var(--sans);}
+      .grid{display:grid; grid-template-columns: 320px 1fr 420px; grid-template-rows: 1fr 280px; gap:12px; padding:12px; height:100%; box-sizing:border-box;}
+      .panel{background:var(--panel); border:1px solid var(--border); border-radius:12px; overflow:hidden; display:flex; flex-direction:column;}
+      .hdr{padding:10px 12px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;}
+      .hdr h2{margin:0; font-size:13px; letter-spacing:.04em; text-transform:uppercase; color:var(--muted);}
+      .body{padding:12px; overflow:auto;}
+      .row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 10px; border:1px solid var(--border); border-radius:10px; margin-bottom:8px;}
+      .badge{font-family:var(--mono); font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--border); color:var(--muted);}
+      .dot{width:10px; height:10px; border-radius:999px; position:relative;}
+      .dot::after{content:""; position:absolute; inset:-6px; border-radius:999px; opacity:.35; animation:pulse 1.4s infinite;}
+      @keyframes pulse{0%{transform:scale(.6); opacity:.2} 50%{transform:scale(1); opacity:.4} 100%{transform:scale(.6); opacity:.2}}
+      .dot.IDLE{background:var(--idle);} .dot.IDLE::after{background:var(--idle);}
+      .dot.WORKING{background:var(--work);} .dot.WORKING::after{background:var(--work);}
+      .dot.DONE{background:var(--ok);} .dot.DONE::after{background:var(--ok);}
+      .dot.ERROR{background:var(--err);} .dot.ERROR::after{background:var(--err);}
+      .log{font-family:var(--mono); font-size:12px; line-height:1.4; white-space:pre-wrap;}
+      .logline{padding:3px 0; border-bottom:1px dashed rgba(255,255,255,.05);}
+      .c-orchestrator{color:#93c5fd;} .c-research{color:#fde68a;} .c-scrape{color:#86efac;} .c-coder{color:#fca5a5;}
+      .c-analyst{color:#c4b5fd;} .c-writer{color:#f9a8d4;} .c-review{color:#a7f3d0;} .c-memory{color:#fcd34d;} .c-github{color:#67e8f9;}
+      .c-hf{color:#60a5fa;} .c-figures{color:#a78bfa;} .c-coherence{color:#34d399;} .c-novelty{color:#f472b6;} .c-citations{color:#22c55e;}
+      .pipeline{display:flex; flex-direction:column; gap:10px;}
+      .step{border:1px solid var(--border); border-radius:10px; padding:10px;}
+      .step .top{display:flex; justify-content:space-between; align-items:center; font-size:13px;}
+      .bar{height:8px; background:rgba(255,255,255,.06); border-radius:999px; overflow:hidden; margin-top:8px;}
+      .fill{height:100%; background:linear-gradient(90deg, var(--work), var(--ok)); width:0%;}
+      .tabs{display:flex; gap:8px; flex-wrap:wrap;}
+      .tab{cursor:pointer; padding:6px 10px; border:1px solid var(--border); border-radius:999px; font-size:12px; color:var(--muted); user-select:none;}
+      .tab.active{color:var(--text); background:rgba(255,255,255,.06);}
+      .hidden{display:none;}
+      .bottom{grid-column: 1 / 4;}
+      .statusline{display:flex; gap:16px; flex-wrap:wrap; font-family:var(--mono); font-size:12px; color:var(--muted); align-items:center;}
+      a{color:#93c5fd; text-decoration:none;} a:hover{text-decoration:underline;}
+      .paper{font-family:var(--mono); font-size:12px; white-space:pre-wrap;}
+      .mem{font-family:var(--mono); font-size:12px; white-space:pre-wrap;}
+
+      /* DIFFS */
+      .diffTop{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+      .roundButtons{display:flex; gap:8px;}
+      .roundBtn{
+        padding:6px 10px; border-radius:10px; border:1px solid var(--border);
+        background:rgba(255,255,255,.04); color:var(--muted); cursor:pointer;
+        font-family:var(--mono); font-size:12px;
+      }
+      .roundBtn.active{color:var(--text); background:rgba(59,130,246,.22); border-color:rgba(147,197,253,.35);}
+      .roundBtn.disabled{opacity:.45; cursor:not-allowed;}
+      .card{border:1px solid var(--border); border-radius:12px; padding:12px; background:rgba(255,255,255,.03);}
+      .diffViewer{
+        margin-top:12px;
+        border:1px solid var(--border);
+        border-radius:12px;
+        background:#0a122a;
+        max-height:60vh;
+        overflow:auto;
+        padding:10px;
+      }
+      .diffLine{
+        font-family:var(--mono);
+        font-size:12px;
+        line-height:1.4;
+        padding:2px 6px;
+        border-radius:8px;
+        margin:2px 0;
+        white-space:pre;
+      }
+      .diffPlus{background:rgba(20,83,45,.35); color:#86efac;}
+      .diffMinus{background:rgba(127,29,29,.35); color:#fca5a5;}
+      .diffHunk{background:rgba(30,58,95,.55); color:#93c5fd; font-size:11px;}
+      .diffMeta{background:rgba(255,255,255,.03); color:#cbd5e1; font-style:italic; font-size:11px;}
+      .diffWait{font-family:var(--mono); color:var(--muted); display:flex; align-items:center; gap:10px; justify-content:center; padding:40px 0;}
+      .dots{display:inline-flex; gap:6px; align-items:center;}
+      .dots span{width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.25); animation:pulse2 1s infinite;}
+      @keyframes pulse2{0%{transform:scale(.6); opacity:.3} 50%{transform:scale(1); opacity:.8} 100%{transform:scale(.6); opacity:.3}}
+      .btnRow{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+      .btn{
+        padding:8px 12px; border-radius:10px; border:1px solid var(--border);
+        background:rgba(255,255,255,.05); color:var(--text);
+        cursor:pointer; font-family:var(--mono); font-size:12px;
+      }
+      .btn.primary{border-color:rgba(59,130,246,.6); background:rgba(59,130,246,.18);}
+      .btn:disabled{opacity:.45; cursor:not-allowed;}
+
+      /* FIGURES */
+      .figTop{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+      .figFilter{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+      select{background:#0b122a; color:var(--text); border:1px solid var(--border); border-radius:10px; padding:8px; font-family:var(--mono); font-size:12px;}
+      .figGrid{
+        display:grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap:12px;
+      }
+      .figCard{
+        border:1px solid #333; border-radius:12px; background:#0a122a;
+        padding:10px;
+        transition: box-shadow .15s ease, transform .15s ease;
+      }
+      .figCard:hover{box-shadow:0 10px 30px rgba(0,0,0,.35); transform:translateY(-1px);}
+      .figImgWrap{
+        background:#111;
+        border-radius:10px;
+        overflow:hidden;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+      }
+      .figImgWrap img{width:100%; height:auto; aspect-ratio: 4/3; object-fit: contain; display:block;}
+      .figName{font-family:var(--mono); font-size:12px; color:var(--muted); margin-top:10px;}
+      .figCaption{
+        margin-top:6px;
+        font-family:var(--mono);
+        font-size:12px;
+        color:var(--text);
+        display:-webkit-box;
+        -webkit-line-clamp:2;
+        -webkit-box-orient: vertical;
+        overflow:hidden;
+        min-height:2.5em;
+      }
+      .figActions{display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;}
+
+      .modalOverlay{
+        position:fixed; inset:0; background:rgba(0,0,0,.92);
+        display:flex; align-items:center; justify-content:center;
+        z-index:1000;
+      }
+      .modal{
+        width: min(1100px, 96vw);
+        max-height: 90vh;
+        border:1px solid var(--border);
+        border-radius:16px;
+        background:#0b1020;
+        overflow:hidden;
+        box-shadow: 0 30px 80px rgba(0,0,0,.6);
+        display:flex; flex-direction:column;
+      }
+      .modalHdr{
+        padding:10px 12px; border-bottom:1px solid var(--border);
+        display:flex; justify-content:space-between; align-items:center; gap:12px;
+        font-family:var(--mono); color:var(--muted); font-size:12px;
+      }
+      .modalMain{padding:12px; overflow:auto;}
+      .modalMain img{max-width:90vw; max-height:70vh; object-fit:contain; width:auto; height:auto; display:block; margin:0 auto;}
+      .modalCaption{margin-top:12px; font-family:var(--mono); font-size:12px; color:var(--text); white-space:pre-wrap;}
+
+      /* Approval */
+      .approvalBox{
+        border:1px solid var(--border);
+        border-radius:12px;
+        padding:10px 12px;
+        background:rgba(255,255,255,.03);
+        display:flex;
+        gap:12px;
+        align-items:center;
+        justify-content:space-between;
+        flex-wrap:wrap;
+      }
+      .approvalLeft{display:flex; gap:12px; align-items:center; flex-wrap:wrap; font-family:var(--mono); font-size:12px; color:var(--muted);}
+      .approvalBtns{display:flex; gap:10px;}
+    </style>
+  </head>
+
+  <body>
+    <div class="grid">
+      <div class="panel">
+        <div class="hdr">
+          <h2>Agents</h2>
+          <span class="badge" id="cycleBadge">cycle: -</span>
+        </div>
+        <div class="body" id="agents"></div>
+      </div>
+
+      <div class="panel">
+        <div class="hdr">
+          <h2>Live</h2>
+          <div class="tabs">
+            <div class="tab active" data-tab="logs">Logs</div>
+            <div class="tab" data-tab="paper">Paper</div>
+            <div class="tab" data-tab="diffs">DIFFS</div>
+            <div class="tab" data-tab="figures">FIGURES</div>
+            <div class="tab" data-tab="memory">Memory</div>
+            <div class="tab" data-tab="costs">COSTS</div>
+            <div class="tab" data-tab="hf">HF</div>
+          </div>
+        </div>
+
+        <div class="body" id="logsTab"><div class="log" id="logs"></div></div>
+        <div class="body hidden" id="paperTab"><div class="paper" id="paper"></div></div>
+        <div class="body hidden" id="diffsTab">
+          <div id="diffsUI">
+            <div class="diffTop">
+              <div style="font-family:var(--mono); font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;">Review Rounds</div>
+              <div class="roundButtons">
+                <button class="roundBtn active" id="roundBtn1">Round 1</button>
+                <button class="roundBtn disabled" id="roundBtn2">Round 2</button>
+                <button class="roundBtn disabled" id="roundBtn3">Round 3</button>
+              </div>
+            </div>
+            <div style="margin-top:12px;" id="diffSummaryWrap"></div>
+            <div class="diffViewer" id="diffViewer"></div>
+          </div>
+        </div>
+
+        <div class="body hidden" id="figuresTab">
+          <div id="figuresUI">
+            <div class="figTop">
+              <div style="font-family:var(--mono); font-size:13px; color:var(--muted);">Experiment Figures</div>
+              <div class="figFilter">
+                <select id="figFilter">
+                  <option value="All">All Experiments</option>
+                </select>
+                <span class="badge" id="figCount">0 figures</span>
+              </div>
+            </div>
+            <div style="margin-top:12px;" id="figGrid"></div>
+          </div>
+        </div>
+
+        <div class="body hidden" id="memoryTab"><div class="mem" id="memory"></div></div>
+        <div class="body hidden" id="costsTab">
+          <div class="card">
+            <div style="font-family:var(--mono); font-size:12px; color:var(--muted);">Budget</div>
+            <div style="margin-top:10px; height:10px; border-radius:999px; border:1px solid var(--border); overflow:hidden; background:rgba(255,255,255,.05);">
+              <div id="budgetFill" style="height:100%; width:0%; background:linear-gradient(90deg, var(--work), var(--ok));"></div>
+            </div>
+            <div style="margin-top:10px; font-family:var(--mono); font-size:12px; color:var(--muted);" id="budgetText">-</div>
+          </div>
+          <div style="margin-top:12px;" class="card">
+            <div style="font-family:var(--mono); font-size:12px; color:var(--muted);">All-time</div>
+            <div style="margin-top:8px; font-family:var(--mono); font-size:12px;" id="allTimeCost">cost_usd: 0</div>
+            <div style="margin-top:10px; font-family:var(--mono); font-size:12px; color:var(--muted);">Per-agent (best-effort)</div>
+            <canvas id="costChart" width="360" height="160" style="width:100%; border-radius:12px; border:1px solid var(--border); margin-top:8px; background:#0a122a;"></canvas>
+          </div>
+        </div>
+
+        <div class="body hidden" id="hfTab">
+          <div class="card" style="margin-bottom:12px;">
+            <div style="font-family:var(--mono); font-size:12px; color:var(--muted);">Hugging Face URLs</div>
+            <div style="margin-top:10px; font-family:var(--mono); font-size:12px;" id="hfUrls">Loading...</div>
+          </div>
+          <div class="card">
+            <div style="font-family:var(--mono); font-size:12px; color:var(--muted);">Status</div>
+            <div style="margin-top:10px; font-family:var(--mono); font-size:12px; color:var(--muted);" id="hfStatus">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="hdr">
+          <h2>Progress</h2>
+          <span class="badge" id="topicBadge">topic: -</span>
+        </div>
+        <div class="body">
+          <div class="pipeline" id="pipeline"></div>
+          <div style="margin-top:12px; border-top:1px solid var(--border); padding-top:12px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+              <div style="font-family:var(--mono); font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;">Live metrics</div>
+              <span class="badge" id="metricsBadge">-</span>
+            </div>
+            <canvas id="metricsCanvas" width="720" height="190" style="width:100%; border-radius:12px; border:1px solid var(--border); margin-top:10px; background:#0a122a;"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel bottom">
+        <div class="hdr">
+          <h2>Status</h2>
+          <span class="badge" id="timeBadge">eta: -</span>
+        </div>
+        <div class="body">
+          <div class="statusline">
+            <div id="task">task: -</div>
+            <div id="tokens">tokens: 0</div>
+            <div id="tokensIn">tokens_in: 0</div>
+            <div id="tokensOut">tokens_out: 0</div>
+            <div id="errors">errors: 0</div>
+            <div id="costUsd">cost_usd: 0</div>
+            <div id="budgetRemaining">budget_remaining_usd: -</div>
+            <div id="costPerCycle">cost_per_cycle: 0</div>
+            <div id="hfSpace">hf_url: -</div>
+            <div id="paperScore">paper_score: -</div>
+          </div>
+          <div style="margin-top:12px;">
+            <div id="approvalBox" class="approvalBox hidden">
+              <div class="approvalLeft">
+                <div><b style="color:#93c5fd;">Approval required</b></div>
+                <div>request_id: <span id="approvalRequestId"></span></div>
+                <div>expires_in: <span id="approvalCountdown"></span>s</div>
+              </div>
+              <div class="approvalBtns">
+                <button class="btn primary" id="btnApprove">Approve</button>
+                <button class="btn" id="btnReject" style="border-color:rgba(239,68,68,.5);">Reject</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ── WebSocket state ──────────────────────────────────────────────
+      const wsProto = location.protocol === "https:" ? "wss" : "ws";
+      let ws = null;
+      let reconnectTimer = null;
+      let connected = false;
+
+      // ── Global stores ───────────────────────────────────────────────
+      let logsRing = [];
+      const LOG_RING_MAX = 500;
+
+      let diffsData = [];   // full diff objects (with patch)
+      let diffsMeta = [];   // from /api/diffs
+      let selectedRound = 1;
+
+      let figures = []; // list of figure objects from /api/figures
+      let figuresByKey = new Map(); // key: png_url
+      let selectedFigureExperiment = "All";
+      let lightbox = {open:false, idx:0, items:[]};
+
+      let metricSeries = new Map(); // key: `${experiment}::${metric}` -> [{x,y}]
+
+      // ── DOM refs ─────────────────────────────────────────────────────
+      const elAgents = document.getElementById("agents");
+      const elLogs = document.getElementById("logs");
+      const elPipeline = document.getElementById("pipeline");
+      const elTask = document.getElementById("task");
+      const elTokens = document.getElementById("tokens");
+      const elTokensIn = document.getElementById("tokensIn");
+      const elTokensOut = document.getElementById("tokensOut");
+      const elErrors = document.getElementById("errors");
+      const elCostUsd = document.getElementById("costUsd");
+      const elBudgetRemaining = document.getElementById("budgetRemaining");
+      const elCostPerCycle = document.getElementById("costPerCycle");
+      const elTopic = document.getElementById("topicBadge");
+      const elCycle = document.getElementById("cycleBadge");
+      const elPaper = document.getElementById("paper");
+      const elMem = document.getElementById("memory");
+      const elHFSpace = document.getElementById("hfSpace");
+      const elPaperScore = document.getElementById("paperScore");
+
+      const elMetricsBadge = document.getElementById("metricsBadge");
+      const metricsCanvas = document.getElementById("metricsCanvas");
+      const metricsCtx = metricsCanvas.getContext("2d");
+
+      const approvalBox = document.getElementById("approvalBox");
+      const approvalRequestId = document.getElementById("approvalRequestId");
+      const approvalCountdown = document.getElementById("approvalCountdown");
+      const btnApprove = document.getElementById("btnApprove");
+      const btnReject = document.getElementById("btnReject");
+
+      const diffViewer = document.getElementById("diffViewer");
+      const diffSummaryWrap = document.getElementById("diffSummaryWrap");
+      const roundBtn1 = document.getElementById("roundBtn1");
+      const roundBtn2 = document.getElementById("roundBtn2");
+      const roundBtn3 = document.getElementById("roundBtn3");
+
+      const figGrid = document.getElementById("figGrid");
+      const figFilter = document.getElementById("figFilter");
+      const figCount = document.getElementById("figCount");
+      const costsCanvas = document.getElementById("costChart");
+      const costsCtx = costsCanvas.getContext("2d");
+
+      const hfUrls = document.getElementById("hfUrls");
+      const hfStatus = document.getElementById("hfStatus");
+
+      // ── Helpers ─────────────────────────────────────────────────────
+      function clsForAgent(agent){
+        const map = {
+          orchestrator:"c-orchestrator", research:"c-research", scraping:"c-scrape", citations:"c-citations",
+          coder:"c-coder", analyst:"c-analyst", figures:"c-figures", coherence:"c-coherence", writer:"c-writer",
+          reviewer:"c-review", memory:"c-memory", github:"c-github", hf:"c-hf"
+        };
+        return map[agent] || "c-orchestrator";
+      }
+
+      function setTab(name){
+        document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.tab===name));
+        const tabs = ["logs","paper","diffs","figures","memory","costs","hf"];
+        tabs.forEach(tt=>{
+          const el = document.getElementById(tt+"Tab");
+          if (el) el.classList.toggle("hidden", tt!==name);
+        });
+        // Poll when opening diffs/figures.
+        if (name === "diffs"){ startDiffPolling(true); }
+        if (name === "figures"){ startFiguresPolling(true); }
+        if (name === "hf"){ refreshHF(); }
+      }
+
+      document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click", ()=>setTab(t.dataset.tab)));
+
+      function renderAgents(agents){
+        // Best-effort: render up to 10 key agents in a stable order.
+        const order = ["orchestrator","research","scraping","citations","coder","analyst","figures","coherence","writer","reviewer","memory","github","hf"];
+        const keys = Object.keys(agents || {});
+        const seen = new Set();
+        elAgents.innerHTML = "";
+        let count = 0;
+        for (const k of order){
+          if (!keys.includes(k)) continue;
+          if (count >= 10) break;
+          const st = agents[k] || {};
+          if (!st) continue;
+          const row = document.createElement("div"); row.className = "row";
+          const left = document.createElement("div"); left.style.display="flex"; left.style.alignItems="center"; left.style.gap="10px";
+          const dot = document.createElement("div"); dot.className = "dot " + (st.status || "IDLE");
+          const label = document.createElement("div"); label.textContent = k; label.style.fontFamily="var(--mono)"; label.style.fontSize="12px";
+          left.appendChild(dot); left.appendChild(label);
+          const badge = document.createElement("div"); badge.className="badge"; badge.textContent = st.status || "IDLE";
+          row.appendChild(left); row.appendChild(badge);
+          elAgents.appendChild(row);
+          seen.add(k); count++;
+        }
+      }
+
+      function renderPipeline(p){
+        elPipeline.innerHTML = "";
+        p.forEach(step=>{
+          const div = document.createElement("div"); div.className="step";
+          const top = document.createElement("div"); top.className="top";
+          const name = document.createElement("div"); name.textContent = step.name;
+          const pct = document.createElement("div"); pct.textContent = Math.round(step.progress*100) + "%";
+          top.appendChild(name); top.appendChild(pct);
+          const bar = document.createElement("div"); bar.className="bar";
+          const fill = document.createElement("div"); fill.className="fill"; fill.style.width = (step.progress*100) + "%";
+          bar.appendChild(fill);
+          div.appendChild(top); div.appendChild(bar);
+          elPipeline.appendChild(div);
+        });
+      }
+
+      function appendLog(evt){
+        const agent = evt.agent || "orchestrator";
+        const msg = evt.message || "";
+        logsRing.push({agent, message: msg, level: evt.level || "info", ts: evt.ts || ""});
+        if (logsRing.length > LOG_RING_MAX){
+          logsRing.shift();
+        }
+        // Render only ring buffer.
+        elLogs.innerHTML = "";
+        logsRing.slice(-LOG_RING_MAX).forEach(l=>{
+          const line = document.createElement("div");
+          line.className = "logline " + clsForAgent(l.agent);
+          line.textContent = `[${l.agent}] ${l.message}`;
+          elLogs.appendChild(line);
+        });
+      }
+
+      function renderGitHubPlaceholder(state){
+        // GH is displayed in HF tab only after rebuild; keep a minimal placeholder.
+      }
+
+      function updatePaperView(tex){
+        if (!tex) tex = "";
+        // Excerpt only to keep UI responsive.
+        elPaper.textContent = tex.slice(0, 120000);
+        // KaTeX rendering (best-effort).
+        setTimeout(()=>{
+          try{
+            if (window.renderMathInElement){
+              window.renderMathInElement(elPaper, {delimiters:[{left:'$$', right:'$$', display:true},{left:'\\(', right:'\\)', display:false},{left:'$', right:'$', display:false}]});
+            }
+          }catch(e){}
+        }, 50);
+      }
+
+      function updateMemoryView(txt){
+        elMem.textContent = txt || "";
+      }
+
+      function drawMetricChart(){
+        // Canvas: plot up to 6 series (each series uses a different color).
+        const w = metricsCanvas.width;
+        const h = metricsCanvas.height;
+        metricsCtx.clearRect(0,0,w,h);
+        metricsCtx.fillStyle = "#0a122a";
+        metricsCtx.fillRect(0,0,w,h);
+
+        const keys = Array.from(metricSeries.keys());
+        const colors = ["#60a5fa","#22c55e","#fca5a5","#a78bfa","#f59e0b","#34d399"];
+        let any = false;
+        keys.slice(0,6).forEach((k, idx)=>{
+          const series = metricSeries.get(k) || [];
+          if (!series.length) return;
+          any = true;
+          const xs = series.map(p=>p.x);
+          const ys = series.map(p=>p.y);
+          const minX = Math.min(...xs);
+          const maxX = Math.max(...xs);
+          const minY = Math.min(...ys);
+          const maxY = Math.max(...ys);
+          const pad = 18;
+          const plotW = w - pad*2;
+          const plotH = h - pad*2;
+          const scaleX = (x)=> (maxX===minX? pad : pad + ((x - minX) / (maxX - minX)) * plotW);
+          const scaleY = (y)=> (maxY===minY? h-pad : pad + (1 - ((y - minY)/(maxY-minY))) * plotH);
+          metricsCtx.strokeStyle = colors[idx % colors.length];
+          metricsCtx.lineWidth = 2;
+          metricsCtx.beginPath();
+          series.forEach((p, i)=>{
+            const px = scaleX(p.x);
+            const py = scaleY(p.y);
+            if (i===0) metricsCtx.moveTo(px,py); else metricsCtx.lineTo(px,py);
+          });
+          metricsCtx.stroke();
+        });
+
+        if (!any){
+          metricsCtx.fillStyle = "rgba(255,255,255,.35)";
+          metricsCtx.font = "12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+          metricsCtx.fillText("No metric events yet.", 16, 34);
+        }
+      }
+
+      function handleMetric(data){
+        const exp = data.experiment || "experiment";
+        const key = data.key || "metric";
+        const value = Number(data.value);
+        const step = data.step ?? 0;
+        const chartKey = exp + "::" + key;
+        if (!metricSeries.has(chartKey)){
+          metricSeries.set(chartKey, []);
+        }
+        const series = metricSeries.get(chartKey);
+        series.push({x: Number(step) || 0, y: value});
+        // Keep last 120 points per series.
+        if (series.length > 120){
+          series.splice(0, series.length-120);
+        }
+        metricSeries.set(chartKey, series);
+        elMetricsBadge.textContent = `latest ${exp}/${key}`;
+        drawMetricChart();
+      }
+
+      // ── DIFFS polling + rendering ────────────────────────────────────
+      let diffPollTimer = null;
+      let diffPollActive = false;
+      async function fetchDiffsMeta(){
+        try{
+          const r = await fetch("/api/diffs");
+          if (!r.ok) return;
+          const meta = await r.json();
+          diffsMeta = meta || [];
+          const available = new Set(diffsMeta.map(m=>String(m.round)));
+          // Round buttons up to 3.
+          const setBtn = (btn, roundN)=>{
+            const isAvail = available.has(String(roundN));
+            btn.classList.toggle("disabled", !isAvail);
+            btn.onclick = () => {
+              if (!isAvail) return;
+              selectedRound = roundN;
+              updateDiffViewer();
+              [roundBtn1,roundBtn2,roundBtn3].forEach(b=>b.classList.remove("active"));
+              if (roundN===1) roundBtn1.classList.add("active");
+              if (roundN===2) roundBtn2.classList.add("active");
+              if (roundN===3) roundBtn3.classList.add("active");
+            };
+          };
+          setBtn(roundBtn1,1);
+          setBtn(roundBtn2,2);
+          setBtn(roundBtn3,3);
+        }catch(e){}
+      }
+
+      function startDiffPolling(forceNow){
+        diffPollActive = true;
+        if (!diffPollTimer){
+          diffPollTimer = setInterval(()=>{ if (diffPollActive) fetchDiffsMeta(); }, 10000);
+        }
+        if (forceNow) fetchDiffsMeta();
+      }
+
+      function stopDiffPolling(){
+        diffPollActive = false;
+      }
+
+      function updateDiffViewer(){
+        // Find full diff object for selectedRound (includes patch).
+        const full = diffsData.find(d=>Number(d.round)===Number(selectedRound));
+        if (!full || !full.patch){
+          diffSummaryWrap.innerHTML = "";
+          diffViewer.innerHTML = `<div class="diffWait">Waiting for Round ${selectedRound} review to complete... <div class="dots"><span></span><span></span><span></span></div></div>`;
+          return;
+        }
+
+        // Summary card.
+        const summary = full.summary || "";
+        const sections = (full.sections_changed || []).slice(0,6).join(", ");
+        diffSummaryWrap.innerHTML = `
+          <div class="card">
+            <div style="font-family:var(--mono); font-size:12px; color:var(--muted);">Round ${selectedRound} Review Diff</div>
+            <div style="margin-top:8px; font-family:var(--mono); font-size:12px;">
+              <div>Summary: ${escapeHtml(summary)}</div>
+              <div style="margin-top:8px; color:var(--muted);">Sections changed: ${escapeHtml(sections || "-")}</div>
+              <div style="margin-top:8px;">+${full.lines_added || 0} lines added&nbsp;&nbsp;-${full.lines_removed || 0} lines removed</div>
+            </div>
+          </div>
+        `;
+
+        // Diff patch render.
+        const patch = full.patch || "";
+        const lines = patch.split("\n");
+        diffViewer.innerHTML = "";
+
+        const frag = document.createDocumentFragment();
+        lines.forEach(l=>{
+          const div = document.createElement("div");
+          div.className = "diffLine";
+          let text = l;
+          if (l.startsWith("+") && !l.startsWith("+++")){
+            div.classList.add("diffPlus");
+            text = l;
+          }else if (l.startsWith("-") && !l.startsWith("---")){
+            div.classList.add("diffMinus");
+            text = l;
+          }else if (l.startsWith("@@")){
+            div.classList.add("diffHunk");
+          }else if (l.startsWith("---") || l.startsWith("+++")){
+            div.classList.add("diffMeta");
+          }else{
+            // context line: default styling
+          }
+          div.textContent = text;
+          frag.appendChild(div);
+        });
+        diffViewer.appendChild(frag);
+
+        // Download button.
+        const downloadBtnId = "downloadPatchBtn";
+        let btn = document.getElementById(downloadBtnId);
+        if (!btn){
+          btn = document.createElement("button");
+          btn.id = downloadBtnId;
+          btn.className = "btn";
+          btn.style.marginTop = "12px";
+          btn.textContent = "Download patch";
+          btn.onclick = () => downloadPatch(full);
+          diffSummaryWrap.appendChild(btn);
+        }
+      }
+
+      function downloadPatch(fullDiff){
+        const patch = fullDiff.patch || "";
+        const blob = new Blob([patch], {type: "text/plain"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const fname = fullDiff.filename || `paper_diff_round${selectedRound}.patch`;
+        a.href = url;
+        a.download = fname;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url), 1000);
+      }
+
+      function escapeHtml(s){
+        return String(s).replace(/[&<>"']/g, (c)=>({
+          "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+        }[c]));
+      }
+
+      // ── FIGURES polling + rendering ─────────────────────────────────
+      let figuresPollTimer = null;
+      let figuresPollActive = false;
+      async function fetchFigures(){
+        try{
+          const r = await fetch("/api/figures");
+          if (!r.ok) return;
+          const list = await r.json();
+          figures = list || [];
+          figures.forEach(f=>{
+            const k = f.png_url;
+            figuresByKey.set(k, f);
+          });
+          renderFigures();
+        }catch(e){}
+      }
+      function startFiguresPolling(forceNow){
+        figuresPollActive = true;
+        if (!figuresPollTimer){
+          figuresPollTimer = setInterval(()=>{ if (figuresPollActive) fetchFigures(); }, 5000);
+        }
+        if (forceNow) fetchFigures();
+      }
+      function stopFiguresPolling(){
+        figuresPollActive = false;
+      }
+
+      function renderFigures(){
+        // Filter.
+        const filtered = figures.filter(f=> selectedFigureExperiment==="All" ? true : String(f.experiment||"")===String(selectedFigureExperiment));
+        figCount.textContent = `${filtered.length} figures`;
+
+        // Update dropdown options based on available experiments.
+        const exps = Array.from(new Set(figures.map(f=>f.experiment).filter(Boolean))).sort();
+        const cur = selectedFigureExperiment;
+        const opts = ["All"].concat(exps);
+        const old = figFilter.value;
+        figFilter.innerHTML = "";
+        opts.forEach(o=>{
+          const opt = document.createElement("option");
+          opt.value = o;
+          opt.textContent = (o==="All") ? "All Experiments" : o;
+          figFilter.appendChild(opt);
+        });
+        // Restore selection.
+        if (opts.includes(cur)) figFilter.value = cur; else figFilter.value = "All";
+
+        figGrid.innerHTML = "";
+        if (!figures.length){
+          // skeleton placeholders
+          for (let i=0;i<3;i++){
+            const sk = document.createElement("div");
+            sk.className = "figCard";
+            sk.innerHTML = `
+              <div class="figImgWrap" style="height:170px; display:flex; align-items:center; justify-content:center;">
+                <div class="badge" style="opacity:.6;">Loading...</div>
+              </div>
+              <div class="figName">-</div>
+              <div class="figCaption">Waiting for figures...</div>
+            `;
+            figGrid.appendChild(sk);
+          }
+          return;
+        }
+
+        const frag = document.createDocumentFragment();
+        filtered.forEach((f, idx)=>{
+          const card = document.createElement("div");
+          card.className = "figCard";
+          const img = document.createElement("img");
+          img.src = f.png_url;
+          img.alt = f.name || "figure";
+
+          card.innerHTML = `
+            <div class="figImgWrap"><img src="${escapeAttr(f.png_url)}" alt="${escapeAttr(f.name||'figure')}" /></div>
+            <div class="figName">${escapeHtml(f.name||'figure')}</div>
+            <div class="figCaption">${escapeHtml(f.caption||'')}</div>
+            <div class="figActions">
+              <button class="btn primary" data-zoom="1">🔍 Zoom</button>
+              <button class="btn" data-download="1">⬇ Download</button>
+            </div>
+          `;
+          card.querySelector('[data-zoom="1"]').onclick = ()=>openLightbox(idx, filtered);
+          card.querySelector('[data-download="1"]').onclick = ()=>downloadFigure(f);
+          frag.appendChild(card);
+        });
+        figGrid.appendChild(frag);
+      }
+
+      function escapeAttr(s){
+        return String(s).replace(/"/g, "&quot;");
+      }
+
+      function downloadFigure(f){
+        const a = document.createElement("a");
+        a.href = f.png_url;
+        a.download = (f.name || "figure") + ".png";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+
+      function openLightbox(idx, items){
+        lightbox.open = true;
+        lightbox.idx = idx;
+        lightbox.items = items;
+
+        const item = items[idx];
+        let modal = document.getElementById("lightboxModal");
+        if (modal) modal.remove();
+
+        modal = document.createElement("div");
+        modal.id = "lightboxModal";
+        modal.className = "modalOverlay";
+
+        const counter = (idx+1) + " / " + items.length;
+        modal.innerHTML = `
+          <div class="modal">
+            <div class="modalHdr">
+              <div>Figure ${counter}</div>
+              <div style="display:flex; gap:10px; align-items:center;">
+                <button class="btn" id="lbPrev">← Prev</button>
+                <button class="btn" id="lbNext">→ Next</button>
+                <button class="btn" id="lbClose">✕ Close</button>
+              </div>
+            </div>
+            <div class="modalMain">
+              <img src="${escapeAttr(item.png_url)}" alt="${escapeAttr(item.name||'figure')}" />
+              <div class="modalCaption">${escapeHtml(item.caption || "")}</div>
+            </div>
+          </div>
+        `;
+        modal.onclick = (e)=>{ if (e.target === modal){ closeLightbox(); } };
+        document.body.appendChild(modal);
+
+        document.getElementById("lbClose").onclick = ()=>closeLightbox();
+        document.getElementById("lbPrev").onclick = ()=>stepLightbox(-1);
+        document.getElementById("lbNext").onclick = ()=>stepLightbox(1);
+      }
+
+      function stepLightbox(delta){
+        if (!lightbox.open) return;
+        lightbox.idx = Math.max(0, Math.min(lightbox.items.length-1, lightbox.idx + delta));
+        const item = lightbox.items[lightbox.idx];
+        const modal = document.getElementById("lightboxModal");
+        if (!modal) return;
+        const img = modal.querySelector("img");
+        img.src = item.png_url;
+        modal.querySelector(".modalCaption").textContent = item.caption || "";
+        modal.querySelector(".modalHdr").firstChild.textContent = "Figure " + (lightbox.idx+1) + " / " + lightbox.items.length;
+      }
+
+      function closeLightbox(){
+        const modal = document.getElementById("lightboxModal");
+        if (modal) modal.remove();
+        lightbox.open = false;
+      }
+
+      // ── HF panel ────────────────────────────────────────────────────
+      async function refreshHF(){
+        try{
+          const r = await fetch("/api/hf");
+          if (!r.ok) throw new Error("hf fetch failed");
+          const obj = await r.json();
+          const dataset = obj.dataset_url;
+          const model = obj.model_url;
+          const space = obj.space_url;
+
+          hfUrls.innerHTML = [
+            dataset ? `<div><b>Dataset:</b> <a href="${escapeAttr(dataset)}" target="_blank" rel="noreferrer">${escapeHtml(dataset)}</a></div>` : `<div><b>Dataset:</b> not available</div>`,
+            model ? `<div><b>Model:</b> <a href="${escapeAttr(model)}" target="_blank" rel="noreferrer">${escapeHtml(model)}</a></div>` : `<div><b>Model:</b> not available</div>`,
+            space ? `<div><b>Space:</b> <a href="${escapeAttr(space)}" target="_blank" rel="noreferrer">${escapeHtml(space)}</a></div>` : `<div><b>Space:</b> not available</div>`
+          ].join("");
+
+          const status = [
+            dataset ? "dataset ✅" : "dataset ⏳",
+            model ? "model ✅" : "model ⏳",
+            space ? "space ✅" : "space ⏳"
+          ].join(" | ");
+          hfStatus.textContent = status;
+        }catch(e){
+          hfUrls.textContent = "Failed to load HF URLs.";
+          hfStatus.textContent = "-";
+        }
+      }
+
+      // ── Cost panel rendering ─────────────────────────────────────────
+      function drawCostChart(byAgent){
+        // Simple bar chart if byAgent has data.
+        costsCtx.clearRect(0,0,costsCanvas.width,costsCanvas.height);
+        costsCtx.fillStyle = "#0a122a";
+        costsCtx.fillRect(0,0,costsCanvas.width,costsCanvas.height);
+        const entries = Object.entries(byAgent || {});
+        if (!entries.length){
+          costsCtx.fillStyle = "rgba(255,255,255,.4)";
+          costsCtx.font = "12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+          costsCtx.fillText("No per-agent cost breakdown.", 16, 32);
+          return;
+        }
+        entries.sort((a,b)=>b[1]-a[1]);
+        const top = entries.slice(0,8);
+        const maxV = Math.max(...top.map(e=>e[1]));
+        const pad = 18;
+        const plotW = costsCanvas.width - pad*2;
+        const plotH = costsCanvas.height - pad*2;
+        const barW = plotW / top.length;
+        top.forEach((e,i)=>{
+          const v = Number(e[1]) || 0;
+          const h = maxV===0 ? 0 : (v/maxV)*plotH;
+          const x = pad + i*barW + barW*0.15;
+          const y = costsCanvas.height - pad - h;
+          costsCtx.fillStyle = "#60a5fa";
+          costsCtx.fillRect(x, y, barW*0.7, h);
+          costsCtx.fillStyle = "rgba(255,255,255,.7)";
+          costsCtx.font = "10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+          costsCtx.fillText(String(e[0]).slice(0,6), x, costsCanvas.height - pad + 12);
+        });
+      }
+
+      // ── Approval UI ────────────────────────────────────────────────
+      async function refreshApproval(){
+        try{
+          const r = await fetch("/api/approval/pending");
+          if (!r.ok) throw new Error("pending fetch failed");
+          const obj = await r.json();
+          const hasPending = !!(obj && obj.pending && obj.request_id);
+          if (!hasPending){
+            approvalBox.classList.add("hidden");
+            approvalRequestId.textContent = "";
+            approvalCountdown.textContent = "";
+            return;
+          }
+          approvalBox.classList.remove("hidden");
+          approvalRequestId.textContent = obj.request_id || "";
+          approvalCountdown.textContent = String(Math.ceil(obj.expires_in_seconds || 0));
+        }catch(e){
+          approvalBox.classList.add("hidden");
+          approvalRequestId.textContent = "";
+          approvalCountdown.textContent = "";
+        }
+      }
+
+      async function sendDecision(approved){
+        try{
+          const reqId = approvalRequestId.textContent || "";
+          if (!reqId) return;
+          await fetch("/api/approval/decision", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({request_id:reqId, approved:approved})});
+          await refreshApproval();
+        }catch(e){}
+      }
+
+      btnApprove.onclick = ()=>sendDecision(true);
+      btnReject.onclick = ()=>sendDecision(false);
+
+      // Poll approval state.
+      setInterval(()=>{ refreshApproval(); }, 1500);
+
+      // ── WebSocket connect/disconnect handling ─────────────────────────
+      function connectWs(){
+        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+        ws = new WebSocket(`${wsProto}://${location.host}/ws/status`);
+        ws.onopen = ()=>{
+          connected = true;
+          if (reconnectTimer){ clearInterval(reconnectTimer); reconnectTimer = null; }
+          appendLog({agent:"orchestrator", message:"connected", level:"info", ts:""});
+        };
+        ws.onclose = ()=>{
+          connected = false;
+          appendLog({agent:"orchestrator", message:"disconnected", level:"error", ts:""});
+          if (!reconnectTimer){
+            reconnectTimer = setInterval(()=>{
+              if (!connected) connectWs();
+            }, 3000);
+          }
+        };
+        ws.onerror = ()=>{
+          connected = false;
+        };
+        ws.onmessage = (m)=>{
+          const data = JSON.parse(m.data);
+          if (data.type === "state"){
+            renderAgents(data.state.agents || {});
+            renderPipeline(data.state.pipeline || []);
+            elTask.textContent = "task: " + (data.state.current_task || "-");
+            elTokens.textContent = "tokens: " + (data.state.tokens_used || 0);
+            elTokensIn.textContent = "tokens_in: " + (data.state.tokens_input || 0);
+            elTokensOut.textContent = "tokens_out: " + (data.state.tokens_output || 0);
+            elErrors.textContent = "errors: " + (data.state.errors || 0);
+            elCostUsd.textContent = "cost_usd: " + (data.state.cost_usd || 0).toFixed(4);
+            elBudgetRemaining.textContent = "budget_remaining_usd: " + (data.state.budget_remaining_usd == null ? "-" : data.state.budget_remaining_usd.toFixed(4));
+            elCostPerCycle.textContent = "cost_per_cycle: " + (data.state.cost_per_cycle || 0).toFixed(4);
+            elHFSpace.textContent = "hf_url: " + (data.state.hf_url || "-");
+            elPaperScore.textContent = "paper_score: " + (data.state.paper_score ?? "-");
+            elTopic.textContent = "topic: " + (data.state.topic || "-");
+            elCycle.textContent = "cycle: " + (data.state.cycle || "-");
+            updatePaperView(data.state.paper_preview || "");
+            updateMemoryView(data.state.memory_preview || "");
+            if (document.getElementById("costsTab") && !document.getElementById("costsTab").classList.contains("hidden")){
+              // update budget bar best-effort
+              const usd = Number(data.state.cost_usd || 0);
+              const remaining = data.state.budget_remaining_usd == null ? null : Number(data.state.budget_remaining_usd);
+              elBudgetRemaining.textContent = "budget_remaining_usd: " + (remaining == null ? "-" : remaining.toFixed(4));
+              elPaperScore.textContent = "paper_score: " + (data.state.paper_score ?? "-");
+              if (remaining != null){
+                const denom = usd + remaining;
+                const ratio = denom > 0 ? usd/denom : 0;
+                document.getElementById("budgetFill").style.width = (Math.max(0, Math.min(1, ratio))*100).toFixed(1) + "%";
+                document.getElementById("budgetText").textContent = `cost_usd=${usd.toFixed(4)} | budget_remaining=${remaining.toFixed(4)}`;
+              }
+            }
+            if (document.getElementById("hfTab") && !document.getElementById("hfTab").classList.contains("hidden")){
+              refreshHF();
+            }
+            // stop polling diffs/figures if tab not active.
+            if (document.querySelector('.tab.active')?.dataset.tab !== "diffs"){ stopDiffPolling(); }
+            if (document.querySelector('.tab.active')?.dataset.tab !== "figures"){ stopFiguresPolling(); }
+          } else if (data.type === "log"){
+            appendLog(data.event || {});
+          } else if (data.type === "metric"){
+            handleMetric(data);
+          } else if (data.type === "cost"){
+            // Best-effort costs panel update.
+            document.getElementById("allTimeCost").textContent = `cost_usd: ${(data.total_usd||0).toFixed(4)}`;
+            const remaining = data.budget_remaining;
+            if (remaining != null && remaining !== undefined){
+              const usd = Number(data.total_usd||0);
+              const denom = usd + Number(remaining||0);
+              const ratio = denom > 0 ? usd/denom : 0;
+              document.getElementById("budgetFill").style.width = (Math.max(0, Math.min(1, ratio))*100).toFixed(1) + "%";
+              document.getElementById("budgetText").textContent = `cost_usd=${usd.toFixed(4)} | budget_remaining=${Number(remaining).toFixed(4)}`;
+            }
+            drawCostChart(data.by_agent || {});
+          } else if (data.type === "diff"){
+            // Update diffs store.
+            diffsData = diffsData.filter(d=>Number(d.round)!==Number(data.round)).concat([data]);
+            // Enable round button.
+            if (data.round === 1){ roundBtn1.classList.remove("disabled"); }
+            if (data.round === 2){ roundBtn2.classList.remove("disabled"); }
+            if (data.round === 3){ roundBtn3.classList.remove("disabled"); }
+            if (document.querySelector('.tab.active')?.dataset.tab === "diffs" && Number(data.round)===Number(selectedRound)){
+              updateDiffViewer();
+            }
+          } else if (data.type === "figure_ready"){
+            const key = data.png_url;
+            if (key && !figuresByKey.has(key)){
+              const item = {name:data.name, png_url:data.png_url, caption:data.caption, experiment:data.experiment, type:data.fig_type || "figure"};
+              figuresByKey.set(key, item);
+              figures.push(item);
+              if (document.querySelector('.tab.active')?.dataset.tab === "figures"){
+                // refresh from store but avoid extra poll
+                renderFigures();
+              }
+            }
+          }
+        };
+      }
+
+      // ── Init ─────────────────────────────────────────────────────────
+      function initFiguresLoading(){
+        renderFigures();
+      }
+
+      figFilter.onchange = ()=>{
+        selectedFigureExperiment = figFilter.value || "All";
+        renderFigures();
+      };
+
+      roundBtn1.onclick = ()=>{ selectedRound = 1; updateDiffViewer(); [roundBtn1,roundBtn2,roundBtn3].forEach(b=>b.classList.remove("active")); roundBtn1.classList.add("active"); };
+      roundBtn2.onclick = ()=>{ if (roundBtn2.classList.contains("disabled")) return; selectedRound = 2; updateDiffViewer(); [roundBtn1,roundBtn2,roundBtn3].forEach(b=>b.classList.remove("active")); roundBtn2.classList.add("active"); };
+      roundBtn3.onclick = ()=>{ if (roundBtn3.classList.contains("disabled")) return; selectedRound = 3; updateDiffViewer(); [roundBtn1,roundBtn2,roundBtn3].forEach(b=>b.classList.remove("active")); roundBtn3.classList.add("active"); };
+
+      // Default: load figs placeholders.
+      renderFigures();
+      updateDiffViewer();
+      connectWs();
+
+      // When leaving tabs, stop polling loops.
+      document.querySelectorAll(".tab").forEach(t=>{
+        t.addEventListener("click", ()=>{
+          const name = t.dataset.tab;
+          if (name !== "diffs") stopDiffPolling();
+          if (name !== "figures") stopFiguresPolling();
+        });
+      });
+
+      // KaTeX auto-render for paper tab after load.
+      setInterval(()=>{
+        try{
+          if (window.renderMathInElement && !document.getElementById("paperTab").classList.contains("hidden")){
+            window.renderMathInElement(elPaper, {delimiters:[{left:'$$', right:'$$', display:true},{left:'\\(', right:'\\)', display:false},{left:'$', right:'$', display:false}]});
+          }
+        }catch(e){}
+      }, 2000);
+    </script>
+  </body>
+</html>
+

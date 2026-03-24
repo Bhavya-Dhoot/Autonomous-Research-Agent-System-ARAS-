@@ -1,0 +1,72 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  chroma:
+    image: chromadb/chroma:0.6.3
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+    volumes:
+      - ./chroma_db:/chroma/chroma
+    ports:
+      - "8001:8000"
+
+  local_model_1:
+    image: ghcr.io/abetlen/llama-cpp-python:latest
+    command: ["python","-m","llama_cpp.server","--host","0.0.0.0","--port","8100","--model","/models/model1.gguf"]
+    volumes:
+      - ./models:/models
+    ports:
+      - "8100:8100"
+
+  local_model_2:
+    image: ghcr.io/abetlen/llama-cpp-python:latest
+    command: ["python","-m","llama_cpp.server","--host","0.0.0.0","--port","8101","--model","/models/model2.gguf"]
+    volumes:
+      - ./models:/models
+    ports:
+      - "8101:8101"
+
+  local_model_3:
+    image: ghcr.io/abetlen/llama-cpp-python:latest
+    command: ["python","-m","llama_cpp.server","--host","0.0.0.0","--port","8102","--model","/models/model3.gguf"]
+    volumes:
+      - ./models:/models
+    ports:
+      - "8102:8102"
+
+  aras:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_OWNER=${GITHUB_OWNER}
+      - HF_TOKEN=${HF_TOKEN}
+      - HF_USERNAME=${HF_USERNAME}
+      - CROSSREF_EMAIL=${CROSSREF_EMAIL}
+      - APPROVAL_WEBHOOK_URL=${APPROVAL_WEBHOOK_URL}
+      - LOCAL_MODEL_1_PATH=/models/model1.gguf
+      - LOCAL_MODEL_2_PATH=/models/model2.gguf
+      - LOCAL_MODEL_3_PATH=/models/model3.gguf
+      - LOCAL_MODEL_HOST=local_model_1
+      - LOCAL_MODEL_PORT_BASE=8100
+      - CHROMA_PERSIST_DIR=/app/chroma_db
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./:/app
+      - ./models:/models
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+      - chroma
+      - local_model_1
+      - local_model_2
+      - local_model_3
+    command: ["python","-m","aras.main","--topic","Docker default topic"]

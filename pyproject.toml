@@ -1,0 +1,15 @@
+[tool.pytest.ini_options]
+addopts = "-v --tb=short -p no:warnings"
+testpaths = ["tests"]
+markers = [
+  "slow: tests that may take >10s",
+  "network: tests that require real internet access",
+  "llm: tests that require real LLM API keys",
+  "gpu: tests needing GPU (skipped in CI)",
+]
+timeout = 120
+
+[tool.pytest_jsonreport]
+output_dir = "tests/reports"
+report_filename = "results.json"
+
